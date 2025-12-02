@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HillSafe — Demo Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html,body,#map { height: 100%; margin: 0; }
+    .legend { background: rgba(255,255,255,0.9); padding: 6px; border-radius:4px; font-size:14px }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Since frontend is served from the same origin as backend, use relative URLs
+const BACKEND = '';
+
+const map = L.map('map').setView([7.3, 80.6], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+const info = L.control({position:'topright'});
+info.onAdd = function(){
+  const div = L.DomUtil.create('div','legend');
+  div.innerHTML = '<b>HillSafe (demo)</b><br>Click map to check slope & safety.';
+  return div;
+}
+info.addTo(map);
+
+map.on('click', async function(e){
+  const {lat, lng: lon} = e.latlng;
+  try{
+    const resp = await fetch(`${BACKEND}/check?lat=${lat}&lon=${lon}`);
+    if(!resp.ok){
+      const text = await resp.text();
+      L.popup().setLatLng(e.latlng).setContent(`<b>Error</b><br>${text}`).openOn(map);
+      return;
+    }
+    const data = await resp.json();
+    const html = `<b>HillSafe result</b><br>Lat: ${data.lat.toFixed(6)}<br>Lon: ${data.lon.toFixed(6)}<br>Slope: ${data.slope_deg}°<br><b>${data.is_safe_basic ? 'SAFE' : 'UNSAFE'}</b><br>Reason: ${data.reason}`;
+    L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
+  }catch(err){
+    L.popup().setLatLng(e.latlng).setContent(`<b>Error</b><br>${err}`).openOn(map);
+  }
+});
+</script>
+</body>
+</html>
