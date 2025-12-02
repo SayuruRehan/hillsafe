@@ -2,3 +2,6 @@ fastapi
 uvicorn[standard]
 numpy
 rasterio
+geopandas
+shapely
+scipy

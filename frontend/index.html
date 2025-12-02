@@ -27,7 +27,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const info = L.control({position:'topright'});
 info.onAdd = function(){
   const div = L.DomUtil.create('div','legend');
-  div.innerHTML = '<b>HillSafe (demo)</b><br>Click map to check slope & safety.';
+  div.innerHTML = '<b>HillSafe Risk Assessment</b><br>Click map to analyze housing suitability.<br><small>Multi-factor risk scoring with real GeoTIFF data</small>';
   return div;
 }
 info.addTo(map);
@@ -42,7 +42,64 @@ map.on('click', async function(e){
       return;
     }
     const data = await resp.json();
-    const html = `<b>HillSafe result</b><br>Lat: ${data.lat.toFixed(6)}<br>Lon: ${data.lon.toFixed(6)}<br>Slope: ${data.slope_deg}°<br><b>${data.is_safe_basic ? 'SAFE' : 'UNSAFE'}</b><br>Reason: ${data.reason}`;
+    
+    // Create rich popup content
+    const riskColor = data.overall_risk_score <= 0.25 ? 'green' : 
+                      data.overall_risk_score <= 0.5 ? 'orange' : 'red';
+    
+    let html = `<div style="max-width: 300px;">
+      <b>HillSafe Risk Assessment</b><br>
+      <small>Lat: ${data.lat.toFixed(6)}, Lon: ${data.lon.toFixed(6)}</small><br><br>
+      
+      <div style="background: ${riskColor}; color: white; padding: 4px 8px; border-radius: 3px; text-align: center; margin-bottom: 8px;">
+        <b>${data.risk_level}</b><br>
+        <small>Risk Score: ${(data.overall_risk_score * 100).toFixed(0)}%</small>
+      </div>
+      
+      <div style="font-size: 11px; margin-bottom: 8px;">
+        <b>Confidence:</b> ${(data.confidence * 100).toFixed(0)}%<br>
+        <b>Analysis:</b> ${data.reasoning}
+      </div>`;
+
+    // Add factor details if available
+    if (Object.keys(data.factor_scores).length > 0) {
+      html += `<div style="font-size: 11px; margin-bottom: 8px;">
+        <b>Risk Factors:</b><br>`;
+      for (const [factor, score] of Object.entries(data.factor_scores)) {
+        const factorPercent = (score * 100).toFixed(0);
+        html += `• ${factor}: ${factorPercent}%<br>`;
+      }
+      html += `</div>`;
+    }
+
+    // Add raw data
+    if (data.raw_data) {
+      html += `<div style="font-size: 11px; margin-bottom: 8px;">
+        <b>Site Data:</b><br>`;
+      if (data.raw_data.slope_deg !== null) {
+        html += `• Slope: ${data.raw_data.slope_deg.toFixed(1)}°<br>`;
+      }
+      if (data.raw_data.elevation_m !== null) {
+        html += `• Elevation: ${data.raw_data.elevation_m.toFixed(0)}m<br>`;
+      }
+      if (data.raw_data.distance_to_water_m !== null) {
+        html += `• Water Distance: ${data.raw_data.distance_to_water_m.toFixed(0)}m<br>`;
+      }
+      html += `</div>`;
+    }
+
+    // Add recommendations
+    if (data.recommendations && data.recommendations.length > 0) {
+      html += `<div style="font-size: 11px;">
+        <b>Recommendations:</b><br>`;
+      data.recommendations.forEach(rec => {
+        html += `• ${rec}<br>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+    
     L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
   }catch(err){
     L.popup().setLatLng(e.latlng).setContent(`<b>Error</b><br>${err}`).openOn(map);
