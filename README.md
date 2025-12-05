@@ -33,9 +33,9 @@ python prepare_data.py \
   --water water_srilanka.shp \
   --output-dir ../backend/data
 
-# OR for specific district (e.g., Kandy)
+# OR for specific district
 python prepare_data.py \
-  --district-name "Kandy" \
+  --district-name "Colombo" \
   --dem cop_dem_srilanka.tif \
   --districts gadm41_LKA.gpkg \
   --water water_srilanka.shp \

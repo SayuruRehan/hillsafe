@@ -1,31 +1,40 @@
-# Data Processing (notes)
+# Data Processing 
 
-This folder holds scripts and notebooks used to prepare real DEM, slope, river rasters and the `safe_mask`.
+This folder holds scripts to prepare real DEM, slope, water proximity rasters for Sri Lanka.
 
-Steps to produce real rasters (offline):
+## Data Processing with `prepare_data.py`
 
-1. Obtain data:
-   - DEM (SRTM 30m or similar) covering pilot district (e.g., Kandy).
-   - District boundary polygon (GeoJSON / shapefile).
-   - Rivers/streams (OpenStreetMap exports or HydroSHEDS).
+The main script `prepare_data.py` handles:
 
-2. Clip DEM to district boundary:
-   - Use `rasterio.mask` or `gdalwarp` to clip DEM using the district polygon.
+1. **Input Data Sources**:
+   - **Copernicus DEM GLO-30**: `cop_dem_srilanka.tif` (30m resolution elevation)
+   - **GADM Boundaries**: `gadm41_LKA.gpkg` (Administrative districts)
+   - **HydroRIVERS**: `water_srilanka.shp` (River network clipped to Sri Lanka)
 
-3. Compute slope from DEM:
-   - Rasterio + numpy: compute gradient and convert to degrees.
-   - Or use `gdaldem slope`.
+2. **Processing Capabilities**:
+   - Country-wide Sri Lanka processing
+   - District-specific processing
+   - Automated slope calculation from DEM
+   - Water proximity distance computation
+   - Multi-district boundary support
 
-4. Rasterize rivers to the DEM grid:
-   - Use `rasterio.features.rasterize` with the same transform and shape as the DEM.
+3. **Output Products**:
+   - `slope_srilanka.tif` - Slope in degrees
+   - `water_distance_srilanka.tif` - Distance to nearest water body
+   - `districts_srilanka.geojson` - Processed district boundaries
 
-5. Compute distance to nearest river:
-   - Use `scipy.ndimage.distance_transform_edt` on the inverted river mask, then multiply by pixel resolution (meters).
+## Usage Examples
 
-6. Create `safe_mask`:
-   - safe = (slope_deg <= SLOPE_THRESHOLD) & (distance_to_river >= RIVER_BUFFER)
+```bash
+# Process entire Sri Lanka
+python prepare_data.py --country-mode \
+  --dem cop_dem_srilanka.tif \
+  --districts gadm41_LKA.gpkg \
+  --water water_srilanka.shp
 
-7. Export outputs:
-   - `slope_kandy.tif`, `distance_to_river_kandy.tif`, `safe_mask_kandy.tif`
-
-This folder can later include an executable notebook `process.ipynb` with code snippets.
+# Process specific district
+python prepare_data.py --district-name "Colombo" \
+  --dem cop_dem_srilanka.tif \
+  --districts gadm41_LKA.gpkg \
+  --water water_srilanka.shp
+```

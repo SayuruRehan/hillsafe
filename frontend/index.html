@@ -3,14 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HillSafe — Demo Map</title>
+  <title>HillSafe — Sri Lanka Housing Suitability</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html,body,#map { height: 100%; margin: 0; }
     .legend { background: rgba(255,255,255,0.9); padding: 6px; border-radius:4px; font-size:14px }
+    .search-container { 
+      position: absolute; 
+      top: 10px; 
+      left: 10px; 
+      z-index: 1000; 
+      background: rgba(255,255,255,0.95); 
+      padding: 10px; 
+      border-radius: 6px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+    }
+    .search-input { 
+      margin: 2px 0; 
+      padding: 4px 6px; 
+      border: 1px solid #ccc; 
+      border-radius: 3px; 
+      width: 120px; 
+      font-size: 12px; 
+    }
+    .search-button { 
+      background: #007cba; 
+      color: white; 
+      border: none; 
+      padding: 6px 12px; 
+      border-radius: 3px; 
+      cursor: pointer; 
+      font-size: 12px; 
+      margin-top: 5px; 
+    }
+    .search-button:hover { background: #005a87; }
   </style>
 </head>
 <body>
+<div class="search-container">
+  <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">🔍 Search Location</div>
+  <input type="number" id="searchLat" class="search-input" placeholder="Latitude" step="0.000001" min="5.5" max="10.0">
+  <input type="number" id="searchLon" class="search-input" placeholder="Longitude" step="0.000001" min="79.0" max="82.0">
+  <button onclick="searchLocation()" class="search-button">Go & Assess</button>
+</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -32,13 +68,37 @@ info.onAdd = function(){
 }
 info.addTo(map);
 
-map.on('click', async function(e){
-  const {lat, lng: lon} = e.latlng;
-  try{
+// Search functionality
+function searchLocation() {
+  const lat = parseFloat(document.getElementById('searchLat').value);
+  const lon = parseFloat(document.getElementById('searchLon').value);
+  
+  if (isNaN(lat) || isNaN(lon)) {
+    alert('Please enter valid latitude and longitude values');
+    return;
+  }
+  
+  if (lat < 5.5 || lat > 10.0 || lon < 79.0 || lon > 82.0) {
+    alert('Coordinates must be within Sri Lanka bounds\nLat: 5.5-10.0, Lon: 79.0-82.0');
+    return;
+  }
+  
+  // Zoom to location
+  map.setView([lat, lon], 14);
+  
+  // Trigger risk assessment
+  setTimeout(() => {
+    assessLocation(lat, lon);
+  }, 500);
+}
+
+// Extract assessment logic into reusable function
+async function assessLocation(lat, lon) {
+  try {
     const resp = await fetch(`${BACKEND}/check?lat=${lat}&lon=${lon}`);
-    if(!resp.ok){
+    if (!resp.ok) {
       const text = await resp.text();
-      L.popup().setLatLng(e.latlng).setContent(`<b>Error</b><br>${text}`).openOn(map);
+      L.popup().setLatLng([lat, lon]).setContent(`<b>Error</b><br>${text}`).openOn(map);
       return;
     }
     const data = await resp.json();
@@ -106,10 +166,20 @@ map.on('click', async function(e){
 
     html += `</div>`;
     
-    L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
-  }catch(err){
-    L.popup().setLatLng(e.latlng).setContent(`<b>Error</b><br>${err}`).openOn(map);
+    // Add marker for searched location
+    L.marker([lat, lon])
+      .addTo(map)
+      .bindPopup(html)
+      .openPopup();
+      
+  } catch (err) {
+    L.popup().setLatLng([lat, lon]).setContent(`<b>Error</b><br>${err}`).openOn(map);
   }
+}
+
+map.on('click', async function(e){
+  const {lat, lng: lon} = e.latlng;
+  await assessLocation(lat, lon);
 });
 </script>
 </body>

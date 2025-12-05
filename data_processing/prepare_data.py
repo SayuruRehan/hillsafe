@@ -8,7 +8,7 @@ Example usage:
     python prepare_data.py --country-mode --dem cop_dem_srilanka.tif --districts gadm41_LKA.gpkg --water water_srilanka.shp
     
     # Process specific district
-    python prepare_data.py --district-name "Kandy" --dem cop_dem_srilanka.tif --districts gadm41_LKA.gpkg --water water_srilanka.shp
+    python prepare_data.py --district-name "Colombo" --dem cop_dem_srilanka.tif --districts gadm41_LKA.gpkg --water water_srilanka.shp
 """
 
 import argparse
@@ -334,7 +334,7 @@ def main():
     # Processing mode
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument("--country-mode", action="store_true", help="Process entire Sri Lanka")
-    mode_group.add_argument("--district-name", help="Process specific district (e.g., 'Kandy')")
+    mode_group.add_argument("--district-name", help="Process specific district (e.g., 'Colombo')")
     
     # Optional parameters
     parser.add_argument("--resolution", type=float, default=0.0008333, 

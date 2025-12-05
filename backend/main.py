@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     # Cleanup (if needed)
     logger.info("HillSafe backend shutting down")
 
-app = FastAPI(title="HillSafe Backend - Real Data Edition", lifespan=lifespan)
+app = FastAPI(title="HillSafe - Sri Lanka Housing Suitability Assessment", lifespan=lifespan)
 
 # Development CORS: allow frontend served from file or localhost during development
 app.add_middleware(
@@ -88,42 +88,9 @@ class SystemInfo(BaseModel):
     data_loaded: bool
     available_data_layers: List[str]
     data_extent: Optional[Dict[str, float]]
-    districts: List[Dict[str, Any]]  # Added districts list
+    districts: List[Dict[str, Any]]
     data_coverage: str  # "country", "district", or "demo"
     notes: str
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize data loader and risk engine on startup."""
-    global data_loader, risk_engine
-    
-    logger.info("Starting HillSafe backend...")
-    
-    # Initialize risk engine
-    risk_engine = RiskScoringEngine()
-    logger.info("Risk engine initialized")
-    
-    # Initialize data loader
-    data_dir = os.environ.get("HILLSAFE_DATA_DIR", "./data")
-    data_loader = DataLoader(data_dir)
-    
-    # Try to load real data
-    success = data_loader.load_all_data()
-    
-    if not success:
-        logger.warning("Real data not available, creating demo rasters...")
-        # Create demo data if real data is not available
-        create_demo_rasters(data_dir)
-        # Try loading again
-        success = data_loader.load_all_data()
-        
-        if success:
-            logger.info("Demo data loaded successfully")
-        else:
-            logger.error("Failed to load even demo data!")
-    
-    logger.info("HillSafe backend startup complete")
 
 
 @app.get("/", response_class=RedirectResponse)
