@@ -1,6 +1,13 @@
-# HillSafe — Housing Suitability Map (Real Data Edition)
+# HillSafe — Sri Lanka Housing Suitability Assessment
 
-This repository contains a **real GeoTIFF-powered** implementation of HillSafe for housing suitability assessment in Sri Lanka's hill country. It uses actual elevation, slope, and water proximity data with a multi-factor risk scoring engine.
+**Real GeoTIFF-powered** housing suitability assessment for **entire Sri Lanka** using elevation, slope, and water proximity data with multi-factor risk scoring.
+
+## 🇱🇰 Sri Lanka Countrywide Coverage
+
+This system now supports **full Sri Lankan coverage** using:
+- **Copernicus DEM GLO-30**: 30m resolution elevation data  
+- **GADM Administrative Boundaries**: All 25 districts
+- **HydroRIVERS**: Comprehensive river network
 
 ## 🚀 Quick Start
 
@@ -12,44 +19,77 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Start the Application
-```bash
-./start.sh  # or: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
+### 2. Data Preparation (with your real data)
 
-### 3. Access the App
-Open your browser to: **http://127.0.0.1:8000/**
-
-Click anywhere on the map to get a comprehensive risk assessment with:
-- **Overall Risk Score** (0-100%)
-- **Risk Level**: Low/Moderate/High/Very High
-- **Individual Factor Scores**: Slope, Water Proximity, Elevation
-- **Actionable Recommendations**
-- **Confidence Level** based on data availability
-
-## 📊 Real Data Integration
-
-### Using Your Own GeoTIFF Data
-
-1. **Prepare your data** using the included script:
+Place your Sri Lankan datasets in `data_processing/`:
 ```bash
 cd data_processing
+
+# For entire Sri Lanka
 python prepare_data.py \
-  --dem your_dem.tif \
-  --water-bodies rivers.geojson \
-  --district kandy_boundary.geojson \
-  --compute-slope \
+  --country-mode \
+  --dem cop_dem_srilanka.tif \
+  --districts gadm41_LKA.gpkg \
+  --water water_srilanka.shp \
+  --output-dir ../backend/data
+
+# OR for specific district (e.g., Kandy)
+python prepare_data.py \
+  --district-name "Kandy" \
+  --dem cop_dem_srilanka.tif \
+  --districts gadm41_LKA.gpkg \
+  --water water_srilanka.shp \
   --output-dir ../backend/data
 ```
 
-2. **Place files in `backend/data/`**:
-   - `dem.tif` or `slope.tif` (required)
-   - `water_bodies.geojson` (optional)
-   - `district_boundary.geojson` (optional)
+### 3. Start the Application
+```bash
+cd ../backend
+./start.sh
+```
 
-### Demo Data
+### 4. Access the App
+Open: **http://127.0.0.1:8000/**
 
-If no real data is provided, the system automatically generates realistic demo rasters covering a Kandy-area extent for testing.
+Click anywhere on Sri Lanka to get:
+- **Overall Risk Score** (0-100%)
+- **Risk Level**: Low/Moderate/High/Very High  
+- **District Information**: Automatically detected
+- **Individual Factor Analysis**: Slope, Water Proximity, Elevation
+- **Actionable Recommendations** with confidence levels
+
+## 📊 Required Sri Lankan Datasets
+
+### Copernicus DEM GLO-30 (`cop_dem_srilanka.tif`)
+- **Source**: https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
+- **Resolution**: 30m (1 arc-second)
+- **Coverage**: Global, download Sri Lanka tile
+- **Format**: GeoTIFF
+
+### GADM Administrative Boundaries (`gadm41_LKA.gpkg`) 
+- **Source**: https://gadm.org/download_country.html (Sri Lanka)
+- **Levels**: Province, District, DS Division
+- **Format**: GeoPackage (.gpkg)
+- **Contains**: All 25 districts with proper names
+
+### HydroRIVERS (`water_srilanka.shp`)
+- **Source**: https://www.hydrosheds.org/products/hydrorivers  
+- **Scale**: 1:50,000 to 1:1,000,000
+- **Preprocessing**: Clip Asia dataset to Sri Lanka bounds
+- **Format**: Shapefile
+
+#### Quick GeoPandas script to clip HydroRIVERS:
+```python
+import geopandas as gpd
+
+# Load Asia rivers and Sri Lanka boundary
+rivers = gpd.read_file("HydroRIVERS_v10_as.shp")
+srilanka = gpd.read_file("gadm41_LKA.gpkg", layer="ADM_0")
+
+# Clip and save
+rivers_sl = gpd.clip(rivers, srilanka)
+rivers_sl.to_file("water_srilanka.shp")
+```
 
 ## 🧠 Risk Scoring Engine
 

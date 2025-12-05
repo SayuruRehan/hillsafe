@@ -73,6 +73,7 @@ risk_engine: Optional[RiskScoringEngine] = None
 class RiskAssessmentResponse(BaseModel):
     lat: float
     lon: float
+    district_name: Optional[str]  # Added district info
     overall_risk_score: float  # 0-1 scale
     risk_level: str
     confidence: float
@@ -87,6 +88,8 @@ class SystemInfo(BaseModel):
     data_loaded: bool
     available_data_layers: List[str]
     data_extent: Optional[Dict[str, float]]
+    districts: List[Dict[str, Any]]  # Added districts list
+    data_coverage: str  # "country", "district", or "demo"
     notes: str
 
 
@@ -142,32 +145,33 @@ def get_system_info():
         available_layers.append("elevation") 
     if data_loader.distance_to_water_raster:
         available_layers.append("water_distance")
+    if data_loader.districts_gdf is not None:
+        available_layers.append("districts")
     
-    # Try to determine data extent from slope raster (our reference)
-    extent = None
-    if data_loader.slope_raster:
-        transform = data_loader.slope_raster.transform
-        width = data_loader.slope_raster.width
-        height = data_loader.slope_raster.height
-        
-        # Calculate bounds
-        west = transform[2]
-        north = transform[5] 
-        east = west + width * transform[0]
-        south = north + height * transform[4]
-        
-        extent = {
-            "west": west,
-            "south": south, 
-            "east": east,
-            "north": north
-        }
+    # Get data extent
+    extent = data_loader.get_data_extent()
+    
+    # Get districts list
+    districts_list = data_loader.get_districts_list()
+    
+    # Determine data coverage type
+    if data_loader.districts_gdf is not None and len(districts_list) > 5:
+        coverage = "country"
+        notes = f"Sri Lanka countrywide data with {len(districts_list)} districts"
+    elif len(districts_list) > 0:
+        coverage = "district" 
+        notes = f"District-level data for {districts_list[0]['name'] if districts_list else 'unknown area'}"
+    else:
+        coverage = "demo"
+        notes = "Demo/synthetic data - replace with real GeoTIFF files"
     
     return SystemInfo(
         data_loaded=len(available_layers) > 0,
         available_data_layers=available_layers,
         data_extent=extent,
-        notes="Real GeoTIFF data loaded" if available_layers else "No spatial data loaded"
+        districts=districts_list,
+        data_coverage=coverage,
+        notes=notes
     )
 
 
@@ -196,6 +200,7 @@ def assess_location_risk(lat: float, lon: float):
     return RiskAssessmentResponse(
         lat=lat,
         lon=lon,
+        district_name=analysis_data.get('district_name'),
         overall_risk_score=assessment.overall_score,
         risk_level=assessment.risk_level,
         confidence=assessment.confidence,
@@ -205,6 +210,18 @@ def assess_location_risk(lat: float, lon: float):
         recommendations=recommendations,
         raw_data=analysis_data
     )
+
+
+@app.get("/districts")
+def list_districts():
+    """Get list of available districts with their bounds."""
+    if not data_loader:
+        raise HTTPException(status_code=500, detail="Data loader not initialized")
+    
+    return {
+        "districts": data_loader.get_districts_list(),
+        "total_count": len(data_loader.get_districts_list())
+    }
 
 
 @app.get("/health")

@@ -18,7 +18,7 @@
 // Since frontend is served from the same origin as backend, use relative URLs
 const BACKEND = '';
 
-const map = L.map('map').setView([7.3, 80.6], 11);
+const map = L.map('map').setView([7.8731, 80.7718], 7);  // Center on Sri Lanka
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '© OpenStreetMap contributors'
@@ -27,7 +27,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const info = L.control({position:'topright'});
 info.onAdd = function(){
   const div = L.DomUtil.create('div','legend');
-  div.innerHTML = '<b>HillSafe Risk Assessment</b><br>Click map to analyze housing suitability.<br><small>Multi-factor risk scoring with real GeoTIFF data</small>';
+  div.innerHTML = '<b>HillSafe - Sri Lanka</b><br>Housing suitability assessment<br><small>Click anywhere to analyze risk factors</small>';
   return div;
 }
 info.addTo(map);
@@ -47,10 +47,16 @@ map.on('click', async function(e){
     const riskColor = data.overall_risk_score <= 0.25 ? 'green' : 
                       data.overall_risk_score <= 0.5 ? 'orange' : 'red';
     
-    let html = `<div style="max-width: 300px;">
+    let html = `<div style="max-width: 350px;">
       <b>HillSafe Risk Assessment</b><br>
-      <small>Lat: ${data.lat.toFixed(6)}, Lon: ${data.lon.toFixed(6)}</small><br><br>
-      
+      <small>Lat: ${data.lat.toFixed(6)}, Lon: ${data.lon.toFixed(6)}</small>`;
+    
+    // Add district info if available
+    if (data.district_name) {
+      html += `<br><small>📍 ${data.district_name} District</small>`;
+    }
+    
+    html += `<br><br>
       <div style="background: ${riskColor}; color: white; padding: 4px 8px; border-radius: 3px; text-align: center; margin-bottom: 8px;">
         <b>${data.risk_level}</b><br>
         <small>Risk Score: ${(data.overall_risk_score * 100).toFixed(0)}%</small>
