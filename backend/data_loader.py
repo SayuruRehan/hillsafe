@@ -98,18 +98,37 @@ class DataLoader:
     def compute_slope_from_dem(self, dem_raster: RasterData) -> Optional[RasterData]:
         """Compute slope in degrees from DEM."""
         try:
-            # Get pixel resolution (assuming square pixels in meters)
-            pixel_size = abs(dem_raster.transform[0])  # degrees
-            # Convert to approximate meters (rough conversion at equator)
-            pixel_size_m = pixel_size * 111320  # meters per degree longitude
+            # Get center latitude for more accurate pixel size calculation
+            center_lat = (dem_raster.transform[5] + dem_raster.transform[5] + dem_raster.height * dem_raster.transform[4]) / 2
             
-            # Compute gradients
-            dy, dx = np.gradient(dem_raster.data.astype(np.float32))
-            dy = dy / pixel_size_m
-            dx = dx / pixel_size_m
+            # Get pixel resolution in degrees
+            pixel_size_deg = abs(dem_raster.transform[0])
             
-            # Calculate slope in degrees
-            slope = np.arctan(np.sqrt(dx*dx + dy*dy)) * 180.0 / np.pi
+            # Convert to meters with latitude correction
+            # At latitude, 1 degree longitude = cos(lat) * 111320 meters
+            # 1 degree latitude = 111320 meters (constant)
+            lat_radians = np.radians(center_lat)
+            pixel_size_x_m = pixel_size_deg * 111320 * np.cos(lat_radians)  # longitude
+            pixel_size_y_m = pixel_size_deg * 111320  # latitude
+            
+            # Compute gradients in elevation per pixel
+            elevation_data = dem_raster.data.astype(np.float32)
+            dy, dx = np.gradient(elevation_data)
+            
+            # Convert gradients to slope: rise/run = elevation_change/horizontal_distance
+            # dy is elevation change per pixel vertically, dx is elevation change per pixel horizontally
+            slope_y = dy / pixel_size_y_m  # elevation change per meter (north-south)
+            slope_x = dx / pixel_size_x_m  # elevation change per meter (east-west)
+            
+            # Calculate total slope magnitude
+            slope_magnitude = np.sqrt(slope_x**2 + slope_y**2)
+            
+            # Convert to degrees: slope = arctan(rise/run)
+            slope = np.arctan(slope_magnitude) * 180.0 / np.pi
+            
+            # Apply realistic constraints for Sri Lanka
+            # Hill country can have steep slopes (30-45°), but cap extreme outliers
+            slope = np.clip(slope, 0, 60)  # Cap at 60 degrees maximum
             
             logger.info(f"Computed slope from DEM. Min: {slope.min():.1f}°, Max: {slope.max():.1f}°, Mean: {slope.mean():.1f}°")
             
@@ -350,17 +369,23 @@ def create_demo_rasters(data_dir: str) -> bool:
     center_x, center_y = 0.5, 0.6  # Roughly central Sri Lanka
     dist_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
     
-    # Create elevation pattern
+    # Create elevation pattern - more realistic and smoother
     elevation = (
-        # Base sea level to low hills
-        50 + 200 * (1 - Y) +  # Elevation increases going north
-        # Central highlands
-        1000 * np.exp(-dist_from_center * 8) +
-        # Add some noise for realism
-        100 * np.random.RandomState(42).randn(height, width)
+        # Base sea level to low hills (gentler gradient)
+        10 + 150 * (1 - Y) +  # Elevation increases going north (gentler)
+        # Central highlands (broader, less steep)
+        800 * np.exp(-dist_from_center * 4) +  # Reduced steepness
+        # Coastal plains (very low elevation near edges)
+        -30 * (X * (1-X) * Y * (1-Y)) * 4 +  # Depression near coast
+        # Add gentle noise for realism (much reduced)
+        20 * np.random.RandomState(42).randn(height, width)  # Much less random variation
     )
     
-    elevation = np.clip(elevation, 0, 2500).astype(np.float32)
+    # Apply smoothing to reduce artificial gradients
+    from scipy import ndimage
+    elevation = ndimage.gaussian_filter(elevation, sigma=2.0)  # Smooth the elevation
+    
+    elevation = np.clip(elevation, 0, 2000).astype(np.float32)  # Reduced max elevation
     
     # Write demo DEM - use Sri Lanka naming
     dem_path = os.path.join(data_dir, 'dem_srilanka.tif')
@@ -375,12 +400,20 @@ def create_demo_rasters(data_dir: str) -> bool:
     ) as dst:
         dst.write(elevation, 1)
     
-    # Create demo slope (computed from elevation)
-    pixel_size_m = 111320 * abs(transform[0])  # rough conversion
+    # Create demo slope (computed from elevation with proper coordinate system)
+    center_lat = (south + north) / 2
+    lat_radians = np.radians(center_lat)
+    pixel_size_deg = abs(transform[0])
+    pixel_size_x_m = pixel_size_deg * 111320 * np.cos(lat_radians)  # longitude
+    pixel_size_y_m = pixel_size_deg * 111320  # latitude
+    
     dy, dx = np.gradient(elevation.astype(np.float32))
-    dy = dy / pixel_size_m
-    dx = dx / pixel_size_m
+    dy = dy / pixel_size_y_m
+    dx = dx / pixel_size_x_m
     slope = np.arctan(np.sqrt(dx*dx + dy*dy)) * 180.0 / np.pi
+    
+    # Apply realistic constraints
+    slope = np.clip(slope, 0, 45)  # Cap demo slopes at 45 degrees
     
     slope_path = os.path.join(data_dir, 'slope_srilanka.tif')
     with rasterio.open(

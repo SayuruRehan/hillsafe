@@ -32,21 +32,18 @@ async def lifespan(app: FastAPI):
     data_dir = os.environ.get("HILLSAFE_DATA_DIR", "./data")
     data_loader = DataLoader(data_dir)
     
-    # Try to load real data
+    # Only try to load real data - no demo data creation
     success = data_loader.load_all_data()
     
     if not success:
-        logger.warning("Real data not available, creating demo rasters...")
-        # Create demo data if real data is not available
-        create_demo_rasters(data_dir)
-        # Try loading again
-        success = data_loader.load_all_data()
-        
-        if success:
-            logger.info("Demo data loaded successfully")
-        else:
-            logger.error("Failed to load even demo data!")
+        logger.error("Real data not available! Please provide:")
+        logger.error("  - cop_dem_srilanka.tif (Copernicus DEM)")
+        logger.error("  - gadm41_LKA.gpkg (GADM boundaries)")  
+        logger.error("  - water_srilanka.shp (HydroRIVERS)")
+        logger.error("Run prepare_data.py to process these files first!")
+        raise RuntimeError("Real data files not found. System requires actual Sri Lankan datasets.")
     
+    logger.info("Real data loaded successfully")
     logger.info("HillSafe backend startup complete")
     
     yield
