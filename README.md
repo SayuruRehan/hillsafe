@@ -9,7 +9,7 @@ This system now supports **full Sri Lankan coverage** using:
 - **GADM Administrative Boundaries**: All 25 districts
 - **HydroRIVERS**: Comprehensive river network
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Backend Setup
 ```bash
@@ -58,7 +58,7 @@ Click anywhere on Sri Lanka to get:
 - **Individual Factor Analysis**: Slope, Water Proximity, Elevation
 - **Actionable Recommendations** with confidence levels
 
-## 📊 Required Sri Lankan Datasets
+## Required Sri Lankan Datasets
 
 ### Copernicus DEM GLO-30 (`cop_dem_srilanka.tif`)
 - **Source**: https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
@@ -91,7 +91,7 @@ rivers_sl = gpd.clip(rivers, srilanka)
 rivers_sl.to_file("water_srilanka.shp")
 ```
 
-## 🧠 Risk Scoring Engine
+## Risk Scoring Engine
 
 The system uses a **multi-factor risk assessment** instead of simple safe/unsafe classification:
 
@@ -141,7 +141,7 @@ The system uses a **multi-factor risk assessment** instead of simple safe/unsafe
 - **`prepare_data.py`**: Script to clip and process real GeoTIFF data
 - **`README.md`**: Notes on offline data preparation steps
 
-## 📝 API Response Example
+## API Response Example
 
 ```json
 {
@@ -193,7 +193,7 @@ For production use with real data, consider these sources:
 - **Local Validation Required**: Ground-truth with local geological knowledge
 - **Resolution Limitations**: 30m DEM may miss micro-scale hazards
 
-## 🚧 Development & Extensions
+## Development & Extensions
 
 ### Adding New Risk Factors
 Modify `backend/risk_engine.py` to add factors like:
@@ -208,10 +208,10 @@ Update `data_loader.py` to handle multiple district datasets and add district se
 ### Machine Learning Integration
 The risk engine can be extended with ML-based landslide susceptibility models using the existing data layers as features.
 
-## 📞 Support & Contribution
+## Support & Contribution
 
 For issues, improvements, or adding real datasets for Sri Lankan districts, please open an issue or contribute to the repository.
 
 ---
 
-**Built with**: FastAPI, Rasterio, GeoPandas, Leaflet, and ❤️ for safer housing in hill country.
+**Built with**: FastAPI, Rasterio, GeoPandas, Leaflet, and ❤️ for safer housing in Sri Lanka.
