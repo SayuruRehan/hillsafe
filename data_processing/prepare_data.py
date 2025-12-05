@@ -34,8 +34,15 @@ def load_sri_lanka_districts(districts_path: str):
     """Load Sri Lankan district boundaries from GADM data."""
     logger.info(f"Loading district boundaries from {districts_path}")
     
-    # GADM typically has multiple admin levels - we want districts (ADM_LEVEL_2)
-    districts_gdf = gpd.read_file(districts_path, layer="ADM_2")
+    # GADM typically has multiple admin levels - we want districts (ADM_ADM_2)
+    try:
+        districts_gdf = gpd.read_file(districts_path, layer="ADM_ADM_2")
+    except:
+        # Fallback to other possible layer names
+        try:
+            districts_gdf = gpd.read_file(districts_path, layer="ADM_2")
+        except:
+            districts_gdf = gpd.read_file(districts_path)  # Use default layer
     
     # Filter for Sri Lanka if multiple countries present
     if 'GID_0' in districts_gdf.columns:
